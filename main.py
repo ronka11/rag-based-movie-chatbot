@@ -9,10 +9,8 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferWindowMemory
 import torch
 
-# Clear CUDA cache
 torch.cuda.empty_cache()
 
-# Create embeddings model outside the function
 instructor_embeddings = HuggingFaceInstructEmbeddings(
     model_name='hkunlp/instructor-xl', 
     model_kwargs={'device': 'cuda'},
@@ -27,10 +25,10 @@ def process_pdfs_from_folder(folder_path, embeddings):
             pdf_name = os.path.splitext(filename)[0]
             save_path = f'vector_store/{pdf_name}'
             
-            # Check if vector store already exists
             if os.path.exists(save_path):
-                print(f"Vector store for {filename} already exists. Loading...")
-                db = FAISS.load_local(save_path, embeddings, allow_dangerous_deserialization=True)  # Add this parameter
+                print(f"Vector store for {filename} already exists")
+                # allow_dangerous_deserialization=True required to load local vector stores
+                db = FAISS.load_local(save_path, embeddings, allow_dangerous_deserialization=True)
                 vector_stores.append(db)
                 continue
             
@@ -58,11 +56,10 @@ def process_pdfs_from_folder(folder_path, embeddings):
 
     return vector_stores
 
-# Read PDFs from the 'data' folder and create vector stores
+
 pdf_folder = 'data'
 vector_stores = process_pdfs_from_folder(pdf_folder, instructor_embeddings)
 
-# Merge all vector stores
 if vector_stores:
     merged_db = vector_stores[0]
     for db in vector_stores[1:]:
@@ -71,9 +68,9 @@ else:
     print("No PDFs found in the data folder.")
     exit()
 
-# Load LLM
+
 max_length = 500
-model_temperature = 0.75
+model_temperature = 0.25 # does not give nice answers with higher temperature, no need for creativity
 llm_model = 'tiiuae/falcon-7b-instruct'
 token = 'your_huggingface_access_token_here'
 
@@ -83,7 +80,7 @@ llm = HuggingFaceHub(
     huggingfacehub_api_token=token
 )
 
-# Set up conversation memory
+# conversation memory
 memory = ConversationBufferWindowMemory(
     k=2,
     memory_key="chat_history",
@@ -91,7 +88,7 @@ memory = ConversationBufferWindowMemory(
     return_messages=True,
 )
 
-# Create the conversational retrieval chain
+# conversational retrieval chain
 qa_conversation = ConversationalRetrievalChain.from_llm(
     llm=llm,
     chain_type='stuff',
@@ -100,13 +97,11 @@ qa_conversation = ConversationalRetrievalChain.from_llm(
     memory=memory,
 )
 
-# Function to get answers from the chatbot
 def get_answer(question):
     response = qa_conversation({"question": question})
     return response['answer']
 
-# Main chat loop
-print("Welcome to the RAG-based LLM Chatbot. Type 'exit' to end the conversation.")
+print("Welcome to the RAG-based LLM Movie Chatbot. Type 'exit' to end the conversation.")
 while True:
     user_input = input("You: ")
     if user_input.lower() == 'exit':
