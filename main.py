@@ -75,7 +75,7 @@ else:
 max_length = 500
 model_temperature = 0.75
 llm_model = 'tiiuae/falcon-7b-instruct'
-token = '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'
+token = 'your_huggingface_access_token_here'
 
 llm = HuggingFaceHub(
     repo_id=llm_model,
