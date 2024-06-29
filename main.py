@@ -14,7 +14,7 @@ torch.cuda.empty_cache()
 instructor_embeddings = HuggingFaceInstructEmbeddings(
     model_name='hkunlp/instructor-xl', 
     model_kwargs={'device': 'cuda'},
-    encode_kwargs={'batch_size': 8, 'show_progress_bar': True}
+    encode_kwargs={'batch_size': 8, 'show_progress_bar': False}
 )
 
 def process_pdfs_from_folder(folder_path, embeddings):
@@ -27,12 +27,10 @@ def process_pdfs_from_folder(folder_path, embeddings):
             
             if os.path.exists(save_path):
                 print(f"Vector store for {filename} already exists")
-                # allow_dangerous_deserialization=True required to load local vector stores
                 db = FAISS.load_local(save_path, embeddings, allow_dangerous_deserialization=True)
                 vector_stores.append(db)
                 continue
             
-            # Process the PDF if vector store doesn't exist
             print(f"Processing {filename}...")
             reader = PdfReader(file_path)
             document_text = ""
@@ -48,7 +46,6 @@ def process_pdfs_from_folder(folder_path, embeddings):
             split_docs = splitter.create_documents([document_text])
 
             db = FAISS.from_documents(split_docs, embeddings)
-
             db.save_local(save_path)
             print(f"Vector store saved for {filename} at {save_path}")
 
@@ -70,9 +67,9 @@ else:
 
 
 max_length = 500
-model_temperature = 0.25 # does not give nice answers with higher temperature, no need for creativity
+model_temperature = 0.25
 llm_model = 'tiiuae/falcon-7b-instruct'
-token = 'your_huggingface_access_token_here'
+token = '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'
 
 llm = HuggingFaceHub(
     repo_id=llm_model,
@@ -80,7 +77,6 @@ llm = HuggingFaceHub(
     huggingfacehub_api_token=token
 )
 
-# conversation memory
 memory = ConversationBufferWindowMemory(
     k=2,
     memory_key="chat_history",
@@ -88,12 +84,11 @@ memory = ConversationBufferWindowMemory(
     return_messages=True,
 )
 
-# conversational retrieval chain
 qa_conversation = ConversationalRetrievalChain.from_llm(
     llm=llm,
     chain_type='stuff',
     retriever=merged_db.as_retriever(),
-    return_source_documents=True,
+    return_source_documents=False,
     memory=memory,
 )
 
